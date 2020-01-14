@@ -20,7 +20,7 @@ func TestStructIteration(t *testing.T) {
 		point{1, 2},
 	}
 	points := []point{}
-	NewIter(m).
+	SliceIter(m).
 		Filter(func(p point) bool {
 			return p.x == 1
 		}).

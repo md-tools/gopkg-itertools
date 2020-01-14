@@ -2,20 +2,28 @@ package itertools
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 )
 
 // ErrIterStop ...
 var ErrIterStop = errors.New("There are no more items in iterator")
 
-type any reflect.Value
+// NewErrIter create an interator that produce err from given string
+func NewErrIter(s string) Iter {
+	return Iter{
+		Next: func() (i interface{}, err error) {
+			return i, fmt.Errorf(s)
+		},
+	}
+}
 
 // Iter ...
 type Iter struct {
 	Next iterFunc
 }
 
-type iterFunc func() (reflect.Value, error)
+type iterFunc func() (interface{}, error)
 
 // type filterFunc func(i interface{}) bool
 
@@ -23,9 +31,9 @@ type iterFunc func() (reflect.Value, error)
 func (iter Iter) Filter(filterFunc interface{}) Iter {
 	filter := reflect.ValueOf(filterFunc).Call
 	return Iter{
-		Next: func() (item reflect.Value, err error) {
+		Next: func() (item interface{}, err error) {
 			for item, err = iter.Next(); err == nil; item, err = iter.Next() {
-				args := []reflect.Value{item}
+				args := []reflect.Value{reflect.ValueOf(item)}
 				if filter(args)[0].Bool() {
 					break
 				}
@@ -38,26 +46,33 @@ func (iter Iter) Filter(filterFunc interface{}) Iter {
 // Each execute given func with iterator's value as argument
 func (iter Iter) Each(eachFunc interface{}) {
 	each := reflect.ValueOf(eachFunc).Call
-	for item, err := iter.Next(); err == nil; item, err = iter.Next() {
-		args := []reflect.Value{item}
-		each(args)
+	for {
+		item, err := iter.Next()
+		switch err {
+		case nil:
+			args := []reflect.Value{reflect.ValueOf(item)}
+			each(args)
+		case ErrIterStop:
+			return
+		default:
+			panic(err)
+		}
 	}
 }
 
-type istrs []string
-
-// NewIter ...
-func NewIter(slice interface{}) (iter Iter) {
+// SliceIter ...
+func SliceIter(slice interface{}) (iter Iter) {
 	sliceVal := reflect.ValueOf(slice)
-	mssindex := -1
+	mssindex := 0
 	msslen := sliceVal.Len()
 	return Iter{
-		Next: func() (item reflect.Value, err error) {
-			mssindex++
+		Next: func() (item interface{}, err error) {
 			if mssindex >= msslen {
 				return item, ErrIterStop
 			}
-			return sliceVal.Index(mssindex), nil
+			item = sliceVal.Index(mssindex).Interface()
+			mssindex++
+			return item, nil
 		},
 	}
 }
