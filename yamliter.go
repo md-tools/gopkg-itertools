@@ -99,7 +99,7 @@ func NewYamlListIter(nodes []*yaml.Node) YamlIter {
 				if index >= max {
 					return n, ErrIterStop
 				}
-				node := *nodes[index]
+				node := nodes[index]
 				index++
 				return node, err
 			},
